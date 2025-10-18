@@ -154,5 +154,100 @@
       getRandomPlayer();
     });
   </script>
+  ```html
+<script>
+  // Mobile-friendly message bridge and high-DPI canvas scaling.
+  (function(){
+    if (window.__mobileBridgeInstalled) return;
+    window.__mobileBridgeInstalled = true;
+
+    // Dispatch synthetic keyboard events to the page so existing keyboard handlers continue to work.
+    function dispatchKeyboardEvent(type, key) {
+      // We try to create KeyboardEvent in a compatible way.
+      try {
+        const ev = new KeyboardEvent(type, { key: key, code: key, bubbles: true, cancelable: true });
+        document.dispatchEvent(ev);
+        window.dispatchEvent(ev);
+      } catch (e) {
+        // fallback for older engines
+        const ev = document.createEvent('Event');
+        ev.initEvent(type, true, true);
+        ev.key = key;
+        document.dispatchEvent(ev);
+      }
+    }
+
+    // High-DPI canvas scaling: scale all canvases to device pixel ratio while preserving CSS size.
+    function scaleCanvases(dpr) {
+      const usedDpr = dpr || window.devicePixelRatio || 1;
+      document.querySelectorAll('canvas').forEach(canvas => {
+        // preserve CSS pixel size
+        const cssW = canvas.clientWidth || canvas.width;
+        const cssH = canvas.clientHeight || canvas.height;
+        if (!cssW || !cssH) {
+          // try bounding rect
+          const rect = canvas.getBoundingClientRect();
+          if (rect.width && rect.height) {
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+          }
+        } else {
+          canvas.style.width = (cssW) + 'px';
+          canvas.style.height = (cssH) + 'px';
+        }
+
+        const rect = canvas.getBoundingClientRect();
+        const targetW = Math.max(1, Math.round(rect.width * usedDpr));
+        const targetH = Math.max(1, Math.round(rect.height * usedDpr));
+
+        if (canvas.width !== targetW || canvas.height !== targetH) {
+          canvas.width = targetW;
+          canvas.height = targetH;
+          // If canvas uses 2D context, set transform so drawing code that assumes CSS pixels still works.
+          const ctx = canvas.getContext && canvas.getContext('2d');
+          if (ctx && typeof ctx.setTransform === 'function') {
+            ctx.setTransform(usedDpr, 0, 0, usedDpr, 0, 0);
+          }
+          // If the game uses WebGL, many engines will pick up the new drawing buffer size automatically.
+        }
+      });
+    }
+
+    // Initially scale canvases on load and when resized.
+    window.addEventListener('load', () => scaleCanvases());
+    window.addEventListener('resize', () => scaleCanvases());
+
+    // Listen for messages from the mobile wrapper
+    window.addEventListener('message', (e) => {
+      const msg = e.data || {};
+      if (msg && msg.source === 'mobile-wrapper') {
+        switch (msg.type) {
+          case 'input':
+            const payload = msg.payload || {};
+            if (payload.eventType === 'keydown') dispatchKeyboardEvent('keydown', payload.key);
+            if (payload.eventType === 'keyup') dispatchKeyboardEvent('keyup', payload.key);
+            break;
+          case 'scale':
+            const dpr = (msg.payload && msg.payload.dpr) || window.devicePixelRatio || 1;
+            scaleCanvases(dpr);
+            break;
+          case 'viewport-resize':
+            // Some games may want to know; dispatch a custom event
+            const ev = new CustomEvent('mobile-viewport-resize', { detail: msg.payload || {} });
+            window.dispatchEvent(ev);
+            break;
+          case 'wrapper-ready':
+            // wrapper sent UA and readiness — you can handle if needed
+            break;
+        }
+      }
+    }, false);
+
+    // Expose a helper for manual calls from the wrapper or console
+    window.__scaleCanvasesForMobile = scaleCanvases;
+  })();
+</script>
+```
 </body>
 </html>
+
