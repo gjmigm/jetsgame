@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Jets Game — Mobile</title>
+  <style>
+    :root {
+      --btn-size: 72px;
+      --btn-gap: 14px;
+      --overlay-opacity: 0.95;
+      --safe-bottom: env(safe-area-inset-bottom);
+      --safe-top: env(safe-area-inset-top);
+    }
+    html,body {
+      height:100%;
+      margin:0;
+      background:#000;
+      -webkit-user-select:none;
+      user-select:none;
+      touch-action:none;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+      color:#fff;
+      font-family: system-ui, -apple-system, "Helvetica Neue", Arial;
+    }
+    #frame {
+      position:fixed;
+      left:0; right:0; top:0; bottom:0;
+      border:0;
+      width:100%;
+      height:100%;
+    }
+    /* Overlay UI */
+    #controls {
+      position:fixed;
+      left:0;
+      right:0;
+      bottom:0;
+      top:0;
+      pointer-events:none; /* allow iframe clicks unless controls explicitly need it */
+    }
+    .left-stick, .right-buttons {
+      position: absolute;
+      bottom: calc(12px + var(--safe-bottom));
+      pointer-events:auto;
+      display:flex;
+      align-items:center;
+      gap:var(--btn-gap);
+      opacity: var(--overlay-opacity);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .left-stick {
+      left:12px;
+      flex-direction:column;
+      align-items:flex-start;
+    }
+    .dpad {
+      width: calc(var(--btn-size) * 2.05);
+      height: calc(var(--btn-size) * 2.05);
+      border-radius: 14px;
+      background: rgba(0,0,0,0.35);
+      display:grid;
+      grid-template-columns: repeat(3,1fr);
+      grid-template-rows: repeat(3,1fr);
+      padding:10px;
+      box-sizing:border-box;
+      touch-action:none;
+    }
+    .dpad .cell {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .dpad .btn {
+      width: var(--btn-size);
+      height: var(--btn-size);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.06);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:#fff;
+      font-weight:600;
+      font-size:18px;
+      user-select:none;
+    }
+    .right-buttons {
+      right:12px;
+      flex-direction:row-reverse;
+      align-items:flex-end;
+      gap:18px;
+    }
+    .action-btn {
+      width: var(--btn-size);
+      height: var(--btn-size);
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.25));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:#fff;
+      font-weight:700;
+      font-size:18px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+      pointer-events:auto;
+      touch-action: manipulation;
+    }
+    .label {
+      font-size:12px;
+      opacity:0.9;
+      text-align:center;
+      margin-top:6px;
+    }
+    /* Small screens adjustments */
+    @media (max-width:420px) {
+      :root { --btn-size: 60px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- The game is loaded inside a same-origin iframe so the wrapper can add mobile UI without changing desktop index.html -->
+  <iframe id="frame" src="index.html" allow="autoplay; fullscreen"></iframe>
+
+  <div id="controls" aria-hidden="false">
+    <div class="left-stick" id="leftStick" style="bottom:calc(16px + var(--safe-bottom));">
+      <div class="dpad" id="dpad">
+        <div class="cell"></div>
+        <div class="cell"><div class="btn" data-key="ArrowUp">↑</div></div>
+        <div class="cell"></div>
+        <div class="cell"><div class="btn" data-key="ArrowLeft">←</div></div>
+        <div class="cell"></div>
+        <div class="cell"><div class="btn" data-key="ArrowRight">→</div></div>
+        <div class="cell"></div>
+        <div class="cell"><div class="btn" data-key="ArrowDown">↓</div></div>
+        <div class="cell"></div>
+      </div>
+      <div class="label">Move</div>
+    </div>
+
+    <div class="right-buttons" id="rightButtons" style="bottom:calc(16px + var(--safe-bottom));">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <div class="action-btn" data-key="Space" id="btnFire">F</div>
+        <div class="label" style="margin-top:6px;">Fire</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <div class="action-btn" data-key="KeyX" id="btnAlt">A</div>
+        <div class="label" style="margin-top:6px;">Alt</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Helper: send message to iframe
+    const frame = document.getElementById('frame');
+    function postMessageToFrame(type, payload) {
+      if (!frame.contentWindow) return;
+      frame.contentWindow.postMessage({ source: 'mobile-wrapper', type, payload }, '*');
+    }
+
+    // Send initial scale information so the game can attempt high-DPI canvas scaling
+    function sendScale() {
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      postMessageToFrame('scale', { dpr });
+    }
+
+    // Forward orientation/resize updates
+    window.addEventListener('resize', () => {
+      sendScale();
+      // if the game inside cares about viewport size it can handle a resize message
+      postMessageToFrame('viewport-resize', { w: innerWidth, h: innerHeight, dpr: window.devicePixelRatio || 1 });
+    });
+
+    // Basic touch -> keyboard mapping. Messages are sent to iframe which contains the real game.
+    function sendKeyDown(key) {
+      postMessageToFrame('input', { eventType: 'keydown', key });
+    }
+    function sendKeyUp(key) {
+      postMessageToFrame('input', { eventType: 'keyup', key });
+    }
+
+    // D-pad touch handling
+    document.querySelectorAll('.dpad .btn').forEach(btn => {
+      const key = btn.dataset.key;
+      btn.addEventListener('touchstart', (ev) => {
+        ev.preventDefault();
+        btn.style.transform = 'translateY(2px) scale(0.98)';
+        sendKeyDown(key);
+      }, { passive:false });
+      btn.addEventListener('touchend', (ev) => {
+        ev.preventDefault();
+        btn.style.transform = '';
+        sendKeyUp(key);
+      });
+      btn.addEventListener('mousedown', (ev) => {
+        // keep keyboard support on desktop
+        ev.preventDefault();
+        sendKeyDown(key);
+      });
+      btn.addEventListener('mouseup', (ev) => { ev.preventDefault(); sendKeyUp(key); });
+      btn.addEventListener('mouseleave', (ev)=>{ ev.preventDefault(); sendKeyUp(key); });
+    });
+
+    // Action buttons
+    document.querySelectorAll('.action-btn').forEach(btn => {
+      const key = btn.dataset.key;
+      btn.addEventListener('touchstart', (ev) => { ev.preventDefault(); btn.style.transform='scale(0.98)'; sendKeyDown(key); }, { passive:false });
+      btn.addEventListener('touchend', (ev) => { ev.preventDefault(); btn.style.transform=''; sendKeyUp(key); });
+      btn.addEventListener('mousedown', (ev)=>{ ev.preventDefault(); sendKeyDown(key); });
+      btn.addEventListener('mouseup', (ev)=>{ ev.preventDefault(); sendKeyUp(key); });
+      btn.addEventListener('mouseleave', (ev)=>{ ev.preventDefault(); sendKeyUp(key); });
+    });
+
+    // Support simple virtual joystick gestures (optional)
+    // If you want a continuous analog-style joystick, implement tracking here and send keydowns when thresholds are crossed.
+
+    // Provide a fallback so keyboard events still work on devices with keyboards: tapping overlay doesn't steal focus
+    document.getElementById('controls').addEventListener('touchstart', (e)=> e.preventDefault(), { passive:false });
+
+    // Inform the frame that we are ready
+    frame.addEventListener('load', () => {
+      sendScale();
+      postMessageToFrame('wrapper-ready', { ua: navigator.userAgent });
+    });
+
+    // Keep scale up-to-date when devicePixelRatio changes (some browsers support this)
+    if (window.matchMedia) {
+      // There's no direct event but we can watch for a DPR change by observing resolution changes if available.
+      // Fallback: periodically check
+      let lastDPR = window.devicePixelRatio || 1;
+      setInterval(() => {
+        const dpr = window.devicePixelRatio || 1;
+        if (dpr !== lastDPR) {
+          lastDPR = dpr;
+          sendScale();
+        }
+      }, 1000);
+    } else {
+      sendScale();
+    }
+  </script>
+</body>
+</html>
