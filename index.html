@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Jets Jersey Challenge</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #e0f7fa;
+      text-align: center;
+      padding: 50px;
+    }
+    h1 {
+      color: #0077c0;
+    }
+    #player-number {
+      font-size: 48px;
+      margin: 20px;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 18px;
+      margin: 10px;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 24px;
+    }
+    #progress {
+      margin-top: 20px;
+      font-size: 20px;
+      color: #004d40;
+    }
+    #hint {
+      margin-top: 10px;
+      font-size: 20px;
+      color: #00695c;
+    }
+    #correct-list {
+      margin-top: 10px;
+      font-size: 18px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>Jets Jersey Challenge</h1>
+  <p>Guess the player's full name for jersey number:</p>
+  <div id="player-number">--</div>
+  <input type="text" id="player-name" placeholder="Enter full name">
+  <button id="submit-button">Submit</button>
+  <button id="hint-button">Show Hint</button>
+  <div id="hint"></div>
+  <div id="result"></div>
+  <button id="next-button" style="display:none;">Next Player</button>
+  <div id="progress"></div>
+  <div id="correct-list"></div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const players = {
+        1: "Eric Comrie",
+        2: "Dylan DeMelo",
+        4: "Neal Pionk",
+        5: "Luke Schenn",
+        6: "Colin Miller",
+        7: "Vladislav Namestnikov",
+        9: "Alex Iafallo",
+        13: "Gabriel Vilardi",
+        14: "Gustav Nyquist",
+        17: "Adam Lowry",
+        19: "Jonathan Toews",
+        24: "Haydn Fleury",
+        28: "Jaret Anderson-Dolan",
+        36: "Morgan Barron",
+        37: "Connor Hellebuyck",
+        41: "David Gustafsson",
+        44: "Josh Morrissey",
+        54: "Dylan Samberg",
+        55: "Mark Scheifele",
+        62: "Nino Niederreiter",
+        64: "Logan Stanley",
+        70: "Tanner Pearson",
+        81: "Kyle Connor",
+        91: "Cole Perfetti"
+      };
+
+      let currentNumber;
+      let correctGuesses = new Set();
+
+      function getRandomPlayer() {
+        const remainingNumbers = Object.keys(players).filter(num => !correctGuesses.has(num));
+        if (remainingNumbers.length === 0) {
+          document.getElementById("player-number").textContent = "🎉";
+          document.getElementById("result").textContent = "You've guessed all players!";
+          document.getElementById("next-button").style.display = "none";
+          document.getElementById("hint").textContent = "";
+          updateProgress();
+          return;
+        }
+
+        currentNumber = remainingNumbers[Math.floor(Math.random() * remainingNumbers.length)];
+        document.getElementById("player-number").textContent = currentNumber;
+        document.getElementById("result").textContent = "";
+        document.getElementById("player-name").value = "";
+        document.getElementById("next-button").style.display = "none";
+        document.getElementById("hint").textContent = "";
+        updateProgress();
+      }
+
+      function checkAnswer() {
+        const input = document.getElementById("player-name").value.trim().toLowerCase();
+        const correct = players[currentNumber].toLowerCase();
+        const result = document.getElementById("result");
+
+        if (input === correct) {
+          result.textContent = "✅ Correct!";
+          result.style.color = "green";
+          correctGuesses.add(currentNumber);
+        } else {
+          result.textContent = `❌ Incorrect. It was ${players[currentNumber]}.`;
+          result.style.color = "red";
+        }
+
+        document.getElementById("next-button").style.display = "inline-block";
+        updateProgress();
+      }
+
+      function showHint() {
+        const name = players[currentNumber];
+        const initials = name.split(" ").map(part => part[0]).join(". ") + ".";
+        document.getElementById("hint").textContent = `Hint: ${initials}`;
+      }
+
+      function updateProgress() {
+        const total = Object.keys(players).length;
+        const correct = correctGuesses.size;
+        document.getElementById("progress").textContent = `Progress: ${correct} out of ${total} correct`;
+
+        const list = Array.from(correctGuesses)
+          .sort((a, b) => Number(a) - Number(b))
+          .map(num => `#${num}: ${players[num]}`)
+          .join("<br>");
+
+        document.getElementById("correct-list").innerHTML = `<strong>Correct Answers:</strong><br>${list}`;
+      }
+
+      // Hook up buttons
+      document.getElementById("submit-button").addEventListener("click", checkAnswer);
+      document.getElementById("hint-button").addEventListener("click", showHint);
+      document.getElementById("next-button").addEventListener("click", getRandomPlayer);
+
+      // Start the game
+      getRandomPlayer();
+    });
+  </script>
+</body>
+</html>
