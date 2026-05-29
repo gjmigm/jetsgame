@@ -1,0 +1,18 @@
+{
+  "name": "Jets Jersey Challenge",
+  "short_name": "Jets Quiz",
+  "description": "Guess the Winnipeg Jets player by their jersey number.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#041E42",
+  "theme_color": "#041E42",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

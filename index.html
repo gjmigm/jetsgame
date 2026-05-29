@@ -2,43 +2,79 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#041E42">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Jets Jersey Challenge</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg">
   <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
     body {
       font-family: Arial, sans-serif;
       background-color: #e0f7fa;
       text-align: center;
-      padding: 50px;
+      padding: clamp(16px, 5vw, 50px);
+      max-width: 600px;
+      margin: 0 auto;
     }
     h1 {
       color: #0077c0;
+      font-size: clamp(22px, 6vw, 36px);
     }
     #player-number {
-      font-size: 48px;
+      font-size: clamp(36px, 12vw, 72px);
       margin: 20px;
     }
-    input, button {
-      padding: 10px;
-      font-size: 18px;
-      margin: 10px;
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    input {
+      padding: 12px;
+      font-size: clamp(16px, 4vw, 18px);
+      width: min(300px, 90%);
+      border: 2px solid #0077c0;
+      border-radius: 6px;
+    }
+    button {
+      padding: 12px 20px;
+      font-size: clamp(15px, 4vw, 18px);
+      width: min(300px, 90%);
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      background-color: #0077c0;
+      color: white;
+    }
+    button:active {
+      opacity: 0.85;
+    }
+    #next-button {
+      background-color: #004d40;
     }
     #result {
       margin-top: 20px;
-      font-size: 24px;
+      font-size: clamp(18px, 5vw, 24px);
     }
     #progress {
       margin-top: 20px;
-      font-size: 20px;
+      font-size: clamp(16px, 4vw, 20px);
       color: #004d40;
     }
     #hint {
       margin-top: 10px;
-      font-size: 20px;
+      font-size: clamp(16px, 4vw, 20px);
       color: #00695c;
     }
     #correct-list {
       margin-top: 10px;
-      font-size: 18px;
+      font-size: clamp(15px, 4vw, 18px);
       color: #333;
     }
   </style>
@@ -47,12 +83,14 @@
   <h1>Jets Jersey Challenge</h1>
   <p>Guess the player's full name for jersey number:</p>
   <div id="player-number">--</div>
-  <input type="text" id="player-name" placeholder="Enter full name">
-  <button id="submit-button">Submit</button>
-  <button id="hint-button">Show Hint</button>
-  <div id="hint"></div>
-  <div id="result"></div>
-  <button id="next-button" style="display:none;">Next Player</button>
+  <div class="controls">
+    <input type="text" id="player-name" placeholder="Enter full name" autocomplete="off">
+    <button id="submit-button">Submit</button>
+    <button id="hint-button">Show Hint</button>
+    <div id="hint"></div>
+    <div id="result"></div>
+    <button id="next-button" style="display:none;">Next Player</button>
+  </div>
   <div id="progress"></div>
   <div id="correct-list"></div>
 
@@ -150,105 +188,19 @@
       document.getElementById("hint-button").addEventListener("click", showHint);
       document.getElementById("next-button").addEventListener("click", getRandomPlayer);
 
+      // Allow Enter key to submit
+      document.getElementById("player-name").addEventListener("keydown", e => {
+        if (e.key === "Enter") checkAnswer();
+      });
+
       // Start the game
       getRandomPlayer();
     });
   </script>
-
-<script>
-  // Mobile-friendly message bridge and high-DPI canvas scaling.
-  (function(){
-    if (window.__mobileBridgeInstalled) return;
-    window.__mobileBridgeInstalled = true;
-
-    // Dispatch synthetic keyboard events to the page so existing keyboard handlers continue to work.
-    function dispatchKeyboardEvent(type, key) {
-      // We try to create KeyboardEvent in a compatible way.
-      try {
-        const ev = new KeyboardEvent(type, { key: key, code: key, bubbles: true, cancelable: true });
-        document.dispatchEvent(ev);
-        window.dispatchEvent(ev);
-      } catch (e) {
-        // fallback for older engines
-        const ev = document.createEvent('Event');
-        ev.initEvent(type, true, true);
-        ev.key = key;
-        document.dispatchEvent(ev);
-      }
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
     }
-
-    // High-DPI canvas scaling: scale all canvases to device pixel ratio while preserving CSS size.
-    function scaleCanvases(dpr) {
-      const usedDpr = dpr || window.devicePixelRatio || 1;
-      document.querySelectorAll('canvas').forEach(canvas => {
-        // preserve CSS pixel size
-        const cssW = canvas.clientWidth || canvas.width;
-        const cssH = canvas.clientHeight || canvas.height;
-        if (!cssW || !cssH) {
-          // try bounding rect
-          const rect = canvas.getBoundingClientRect();
-          if (rect.width && rect.height) {
-            canvas.style.width = rect.width + 'px';
-            canvas.style.height = rect.height + 'px';
-          }
-        } else {
-          canvas.style.width = (cssW) + 'px';
-          canvas.style.height = (cssH) + 'px';
-        }
-
-        const rect = canvas.getBoundingClientRect();
-        const targetW = Math.max(1, Math.round(rect.width * usedDpr));
-        const targetH = Math.max(1, Math.round(rect.height * usedDpr));
-
-        if (canvas.width !== targetW || canvas.height !== targetH) {
-          canvas.width = targetW;
-          canvas.height = targetH;
-          // If canvas uses 2D context, set transform so drawing code that assumes CSS pixels still works.
-          const ctx = canvas.getContext && canvas.getContext('2d');
-          if (ctx && typeof ctx.setTransform === 'function') {
-            ctx.setTransform(usedDpr, 0, 0, usedDpr, 0, 0);
-          }
-          // If the game uses WebGL, many engines will pick up the new drawing buffer size automatically.
-        }
-      });
-    }
-
-    // Initially scale canvases on load and when resized.
-    window.addEventListener('load', () => scaleCanvases());
-    window.addEventListener('resize', () => scaleCanvases());
-
-    // Listen for messages from the mobile wrapper
-    window.addEventListener('message', (e) => {
-      const msg = e.data || {};
-      if (msg && msg.source === 'mobile-wrapper') {
-        switch (msg.type) {
-          case 'input':
-            const payload = msg.payload || {};
-            if (payload.eventType === 'keydown') dispatchKeyboardEvent('keydown', payload.key);
-            if (payload.eventType === 'keyup') dispatchKeyboardEvent('keyup', payload.key);
-            break;
-          case 'scale':
-            const dpr = (msg.payload && msg.payload.dpr) || window.devicePixelRatio || 1;
-            scaleCanvases(dpr);
-            break;
-          case 'viewport-resize':
-            // Some games may want to know; dispatch a custom event
-            const ev = new CustomEvent('mobile-viewport-resize', { detail: msg.payload || {} });
-            window.dispatchEvent(ev);
-            break;
-          case 'wrapper-ready':
-            // wrapper sent UA and readiness — you can handle if needed
-            break;
-        }
-      }
-    }, false);
-
-    // Expose a helper for manual calls from the wrapper or console
-    window.__scaleCanvasesForMobile = scaleCanvases;
-  })();
-</script>
-
+  </script>
 </body>
 </html>
-
-
